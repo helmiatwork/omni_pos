@@ -1,8 +1,21 @@
 {
+  "name": "omni-pos",
   "private": true,
   "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build"
+  },
+  "dependencies": {
+    "@inertiajs/svelte": "^2.0.0",
+    "svelte": "^5.0.0"
+  },
   "devDependencies": {
-    "vite": "^8.3.0",
-    "vite-plugin-ruby": "^5.2.4"
+    "@sveltejs/vite-plugin-svelte": "^4.0.0",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.13",
+    "vite": "^5.4.0",
+    "vite-plugin-ruby": "~3.2.0"
   }
 }
