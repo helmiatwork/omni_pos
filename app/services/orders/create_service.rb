@@ -8,6 +8,8 @@ module Orders
 
     class << self
       def call(station_ref:, vertical:, lines:, metadata: {})
+        return Result.new(success: false, error: 'Order must contain at least one line item') if lines.blank?
+
         Order.transaction do
           order = Order.new(
             station_ref: station_ref,

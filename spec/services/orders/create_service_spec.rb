@@ -62,11 +62,22 @@ RSpec.describe Orders::CreateService do
       expect(order.metadata['vehicle_tier']).to eq('SUV')
     end
 
+    it 'rejects order creation when lines is empty or blank' do
+      result = described_class.call(
+        station_ref: 'POS-01',
+        vertical: 'grocery',
+        lines: []
+      )
+
+      expect(result).not_to be_success
+      expect(result.error).to eq('Order must contain at least one line item')
+    end
+
     it 'returns failure when validation fails' do
       result = described_class.call(
         station_ref: '',
         vertical: 'grocery',
-        lines: []
+        lines: [{ name: 'Item', qty: 1, unit_price_cents: 1000 }]
       )
 
       expect(result).not_to be_success

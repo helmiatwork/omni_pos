@@ -39,6 +39,40 @@ RSpec.describe OmniWalletClient do
       expect(res[:transaction_id]).to eq('TXN-9988')
     end
 
+    it 'attaches replay protection headers and includes timestamp and nonce in signature' do
+      fake_response = instance_double(Net::HTTPSuccess, is_a?: true, code: '200', body: {
+        success: true,
+        transaction_id: 'TXN-9988'
+      }.to_json)
+
+      expect_any_instance_of(Net::HTTP).to receive(:request) do |_, req|
+        expect(req['X-Device-Signature']).to be_present
+        expect(req['X-Device-Timestamp']).to be_present
+        expect(req['X-Device-Nonce']).to be_present
+
+        expected_sig = client.send(
+          :generate_signature,
+          req.method,
+          '/v1/transfers/purchase',
+          req.body,
+          timestamp: req['X-Device-Timestamp'],
+          nonce: req['X-Device-Nonce']
+        )
+        expect(req['X-Device-Signature']).to eq(expected_sig)
+
+        fake_response
+      end
+
+      client.debit_wallet(
+        customer_id: 'cust-123',
+        merchant_id: 'merch-456',
+        amount_cents: 50_000,
+        pin: '123456',
+        idempotency_key: 'idem-uuid-001',
+        order_id: 'ord-001'
+      )
+    end
+
     it 'handles network timeout and marks status as unknown for recovery' do
       allow_any_instance_of(Net::HTTP).to receive(:request).and_raise(Net::ReadTimeout)
 

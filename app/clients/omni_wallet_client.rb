@@ -45,7 +45,17 @@ class OmniWalletClient
     uri = URI.parse("#{base_url}#{path}")
     http = build_http(uri)
     req = Net::HTTP::Get.new(uri.request_uri)
-    apply_headers(req, headers)
+
+    timestamp = (headers['X-Device-Timestamp'] || Time.current.to_i).to_s
+    nonce = (headers['X-Device-Nonce'] || SecureRandom.hex(16)).to_s
+    signature = generate_signature(req.method, path, '', timestamp: timestamp, nonce: nonce)
+
+    auth_headers = {
+      'X-Device-Signature' => signature,
+      'X-Device-Timestamp' => timestamp,
+      'X-Device-Nonce' => nonce
+    }
+    apply_headers(req, headers.merge(auth_headers))
 
     execute_request(http, req)
   end
@@ -57,8 +67,16 @@ class OmniWalletClient
     req['Content-Type'] = 'application/json'
     req.body = body.to_json
 
-    signature = generate_signature(req.method, path, req.body)
-    apply_headers(req, headers.merge('X-Device-Signature' => signature))
+    timestamp = (headers['X-Device-Timestamp'] || Time.current.to_i).to_s
+    nonce = (headers['X-Device-Nonce'] || SecureRandom.hex(16)).to_s
+    signature = generate_signature(req.method, path, req.body, timestamp: timestamp, nonce: nonce)
+
+    auth_headers = {
+      'X-Device-Signature' => signature,
+      'X-Device-Timestamp' => timestamp,
+      'X-Device-Nonce' => nonce
+    }
+    apply_headers(req, headers.merge(auth_headers))
 
     execute_request(http, req)
   end
@@ -75,8 +93,10 @@ class OmniWalletClient
     headers.each { |k, v| req[k] = v.to_s }
   end
 
-  def generate_signature(method, path, body)
-    data = "#{method}:#{path}:#{body}"
+  def generate_signature(method, path, body, timestamp: nil, nonce: nil)
+    timestamp = (timestamp || Time.current.to_i).to_s
+    nonce = (nonce || SecureRandom.hex(16)).to_s
+    data = "#{method}:#{path}:#{body}:#{timestamp}:#{nonce}"
     OpenSSL::HMAC.hexdigest('SHA256', device_key, data)
   end
 

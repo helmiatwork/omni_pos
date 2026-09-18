@@ -8,11 +8,15 @@ module Orders
 
     class << self
       def call(order:, reason:, actor_id:)
-        if order.status == 'fulfilled'
-          raise Errors::InvalidStateTransitionError, 'Cannot void fulfilled order'
-        end
+        order.with_lock do
+          if %w[fulfilled voided].include?(order.status)
+            raise Errors::InvalidStateTransitionError, "Cannot void #{order.status} order"
+          end
 
-        Order.transaction do
+          if order.captured_tenders_total_cents.positive?
+            raise Errors::InvalidStateTransitionError, 'Cannot void order with captured tenders; issue refund instead'
+          end
+
           order.update!(status: 'voided')
 
           PosAuditEvent.create!(

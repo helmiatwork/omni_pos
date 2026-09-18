@@ -8,6 +8,10 @@ module Orders
 
     class << self
       def call(order:)
+        if %w[voided refunded fulfilled].include?(order.status)
+          raise Errors::InvalidStateTransitionError, "Cannot fulfill order in #{order.status} state"
+        end
+
         if order.vertical == 'carwash' && !order.paid?
           raise Errors::PayFirstViolationError, 'Carwash orders must be paid before fulfilling'
         end
@@ -25,6 +29,10 @@ module Orders
       end
 
       def complete(order:)
+        unless order.status == 'fulfilling'
+          raise Errors::InvalidStateTransitionError, "Cannot complete order in #{order.status} state"
+        end
+
         order.update!(status: 'fulfilled')
         Result.new(success: true, order: order)
       end

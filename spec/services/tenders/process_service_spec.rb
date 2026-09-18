@@ -96,5 +96,18 @@ RSpec.describe Tenders::ProcessService do
         )
       }.to raise_error(Errors::WalletClientError, /insufficient funds/i)
     end
+
+    it 'rejects payment if order is in an invalid state' do
+      order.update!(status: 'voided')
+
+      expect {
+        described_class.call(
+          order: order,
+          method: 'cash',
+          amount_cents: 10_000,
+          idempotency_key: 'idem-void-state'
+        )
+      }.to raise_error(Errors::InvalidStateTransitionError, /cannot process payment for order in voided state/i)
+    end
   end
 end

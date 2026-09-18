@@ -21,6 +21,22 @@ RSpec.describe Orders::FulfillService do
       end
     end
 
+    context 'when order is in a terminal or invalid state for fulfillment' do
+      it 'rejects fulfillment if order is voided' do
+        voided_order = create(:order, status: 'voided')
+        expect {
+          described_class.call(order: voided_order)
+        }.to raise_error(Errors::InvalidStateTransitionError, /cannot fulfill order in voided state/i)
+      end
+
+      it 'rejects fulfillment if order is fulfilled' do
+        fulfilled_order = create(:order, status: 'fulfilled')
+        expect {
+          described_class.call(order: fulfilled_order)
+        }.to raise_error(Errors::InvalidStateTransitionError, /cannot fulfill order in fulfilled state/i)
+      end
+    end
+
     context 'when transitioning from fulfilling to fulfilled' do
       it 'marks order as fulfilled' do
         order = create(:order, vertical: 'food', status: 'fulfilling')
@@ -28,6 +44,14 @@ RSpec.describe Orders::FulfillService do
         result = described_class.complete(order: order)
         expect(result).to be_success
         expect(order.reload.status).to eq('fulfilled')
+      end
+
+      it 'rejects completing an order not in fulfilling state' do
+        order = create(:order, vertical: 'food', status: 'created')
+
+        expect {
+          described_class.complete(order: order)
+        }.to raise_error(Errors::InvalidStateTransitionError, /cannot complete order in created state/i)
       end
     end
   end

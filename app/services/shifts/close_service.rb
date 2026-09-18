@@ -10,13 +10,19 @@ module Shifts
       def call(shift:, counted_cash:, actor_id:)
         raise Errors::ShiftAlreadyClosedError, 'Shift is already closed' if shift.closed?
 
+        if Order.where(station_ref: shift.device_id.to_s, status: %w[created tendering fulfilling]).exists?
+          raise Errors::InvalidStateTransitionError, 'Cannot close shift with open orders'
+        end
+
         Shift.transaction do
           shift.lock!
 
           # Pure blind close calculation:
-          # Cash captured during shift
-          cash_tenders = Tender.where(method: 'cash', status: 'captured')
-                               .where('created_at >= ?', shift.opened_at)
+          # Cash captured during shift on this device
+          cash_tenders = Tender.joins(:order)
+                               .where(method: 'cash', status: 'captured')
+                               .where(orders: { station_ref: shift.device_id.to_s })
+                               .where('tenders.created_at >= ? AND tenders.created_at <= ?', shift.opened_at, Time.current)
                                .sum(:amount_cents)
 
           paid_in = shift.drawer_events.where(event_type: 'paid_in').sum(:amount)

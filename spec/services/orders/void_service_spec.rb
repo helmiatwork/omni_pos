@@ -25,5 +25,22 @@ RSpec.describe Orders::VoidService do
         described_class.call(order: fulfilled_order, reason: 'Customer returned', actor_id: actor_id)
       }.to raise_error(Errors::InvalidStateTransitionError, /cannot void fulfilled order/i)
     end
+
+    it 'rejects voiding an already voided order' do
+      voided_order = create(:order, status: 'voided')
+
+      expect {
+        described_class.call(order: voided_order, reason: 'Double void', actor_id: actor_id)
+      }.to raise_error(Errors::InvalidStateTransitionError, /cannot void voided order/i)
+    end
+
+    it 'rejects voiding an order with captured tenders' do
+      order = create(:order, status: 'tendering', total_cents: 50_000)
+      create(:tender, order: order, amount_cents: 20_000, status: 'captured')
+
+      expect {
+        described_class.call(order: order, reason: 'Customer changed mind', actor_id: actor_id)
+      }.to raise_error(Errors::InvalidStateTransitionError, /cannot void order with captured tenders; issue refund instead/i)
+    end
   end
 end
