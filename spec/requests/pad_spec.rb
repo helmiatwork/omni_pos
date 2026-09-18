@@ -5,7 +5,10 @@ RSpec.describe 'Pad Controller', type: :request do
     it 'renders Pad Inertia page' do
       get '/pad'
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include('Pad')
+      page_data = JSON.parse(CGI.unescapeHTML(response.body[/data-page="([^"]+)"/, 1]))
+      expect(page_data['component']).to eq('Pad')
+      expect(page_data['props']).to have_key('station_ref')
+      expect(page_data['props']).to have_key('order')
     end
 
     context 'when no active order exists' do

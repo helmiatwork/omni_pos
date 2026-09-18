@@ -4,6 +4,7 @@ class Shift < ApplicationRecord
 
   validates :device_id, presence: true
   validates :opening_cash, numericality: { greater_than_or_equal_to: 0 }
+  validate :no_active_shift_on_device, on: :create
 
   scope :open, -> { where(closed_at: nil) }
   scope :closed, -> { where.not(closed_at: nil) }
@@ -30,5 +31,13 @@ class Shift < ApplicationRecord
 
   def variance_money
     variance ? Money.new(variance, 'IDR') : nil
+  end
+
+  private
+
+  def no_active_shift_on_device
+    if Shift.open.where(device_id: device_id).exists?
+      errors.add(:device_id, 'already has an active open shift')
+    end
   end
 end

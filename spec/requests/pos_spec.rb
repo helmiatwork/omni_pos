@@ -8,7 +8,9 @@ RSpec.describe 'POS Controller', type: :request do
     it 'routes root to pos#sell and renders Sell Inertia page' do
       get '/'
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include('Sell')
+      page_data = JSON.parse(CGI.unescapeHTML(response.body[/data-page="([^"]+)"/, 1]))
+      expect(page_data['component']).to eq('Sell')
+      expect(page_data['props']).to have_key('catalog')
     end
   end
 
@@ -17,7 +19,10 @@ RSpec.describe 'POS Controller', type: :request do
       it 'renders Sell page with nil current_shift and sample catalog' do
         get '/sell'
         expect(response).to have_http_status(:ok)
-        expect(response.body).to include('Sell')
+        page_data = JSON.parse(CGI.unescapeHTML(response.body[/data-page="([^"]+)"/, 1]))
+        expect(page_data['component']).to eq('Sell')
+        expect(page_data['props']['current_shift']).to be_nil
+        expect(page_data['props']['catalog']).to be_an(Array)
       end
 
       it 'returns JSON format when requested' do

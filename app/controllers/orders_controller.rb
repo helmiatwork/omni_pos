@@ -26,10 +26,11 @@ class OrdersController < ApplicationController
   end
 
   def create
-    station_ref = params[:station_ref].presence || 'Station-01'
-    vertical = params[:vertical]
-    lines = params[:lines] || []
-    metadata = params[:metadata] || {}
+    p = order_create_params
+    station_ref = p[:station_ref].presence || 'Station-01'
+    vertical = p[:vertical]
+    lines = p[:lines]&.map(&:to_h) || []
+    metadata = p[:metadata]&.to_h || {}
 
     result = Orders::CreateService.call(
       station_ref: station_ref,
@@ -86,8 +87,8 @@ class OrdersController < ApplicationController
   end
 
   def void
-    reason = params[:reason].presence || 'Voided by operator'
-    actor_id = params[:actor_id].presence || current_actor_id
+    reason = void_params[:reason].presence || 'Voided by operator'
+    actor_id = current_actor_id
 
     result = Orders::VoidService.call(order: @order, reason: reason, actor_id: actor_id)
 
@@ -108,5 +109,25 @@ class OrdersController < ApplicationController
 
   def set_order
     @order = Order.find(params[:id])
+  end
+
+  def order_create_params
+    params.permit(
+      :station_ref,
+      :vertical,
+      metadata: {},
+      lines: [
+        :name,
+        :sku,
+        :qty,
+        :unit,
+        :unit_price_cents,
+        { modifiers: {} }
+      ]
+    )
+  end
+
+  def void_params
+    params.permit(:reason)
   end
 end

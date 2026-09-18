@@ -1,14 +1,15 @@
 class ApplicationController < ActionController::Base
   include InertiaRails::Controller
 
-  protect_from_forgery with: :null_session, if: -> { request.format.json? || Rails.env.test? || request.headers['X-Inertia'].present? }
+  protect_from_forgery with: :exception, unless: -> { request.format.json? && !request.headers['X-Inertia'].present? }
 
   rescue_from ActiveRecord::RecordNotFound, with: :record_not_found
 
   private
 
   def json_request?
-    request.format.json? || request.content_type.to_s.include?('json') || request.headers['Accept'].to_s.include?('application/json')
+    return false if request.headers['X-Inertia'].present?
+    request.format.json? || (request.headers['Accept'].to_s.include?('application/json') && !request.headers['Accept'].to_s.include?('text/html'))
   end
 
   def record_not_found(error)
@@ -20,14 +21,10 @@ class ApplicationController < ActionController::Base
   end
 
   def current_actor_id
-    params[:actor_id].presence || default_staff.id
+    session[:staff_id] || default_staff&.id
   end
 
   def default_staff
-    Staff.first || Staff.create!(
-      name: 'Kasir Utama',
-      role: 'cashier',
-      pin_hash: BCrypt::Password.create('123456')
-    )
+    Staff.first
   end
 end

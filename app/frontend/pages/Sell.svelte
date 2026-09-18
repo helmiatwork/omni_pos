@@ -1,4 +1,5 @@
 <script>
+  import { router } from '@inertiajs/svelte'
   import Navbar from '../components/Navbar.svelte'
   import { formatMoney, formatDate, generateIdempotencyKey } from '../lib/utils'
 
@@ -158,6 +159,12 @@
 
   async function submitTender() {
     if (!activeOrder) return
+
+    if (tenderMethod === 'cash' && cashAmountTendered <= 0) {
+      showNotification('Nominal tunai harus lebih besar dari 0', 'error')
+      return
+    }
+
     isProcessing = true
 
     const amount = tenderMethod === 'cash' ? Math.min(cashAmountTendered, remainingDueCents) : remainingDueCents
@@ -187,11 +194,10 @@
         showNotification(`Pembayaran ${tenderMethod === 'cash' ? 'Tunai' : 'omniWallet'} sukses dicatat!`, 'success')
 
         if (activeOrder.status === 'paid') {
-          // If carwash, optionally trigger fulfill
           setTimeout(() => {
             clearCart()
             isTenderModalOpen = false
-            window.location.reload()
+            router.reload()
           }, 2000)
         }
       } else {

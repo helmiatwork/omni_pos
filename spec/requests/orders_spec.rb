@@ -10,7 +10,10 @@ RSpec.describe 'Orders Controller', type: :request do
     it 'renders Orders Inertia page' do
       get '/orders'
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include('Orders')
+      page_data = JSON.parse(CGI.unescapeHTML(response.body[/data-page="([^"]+)"/, 1]))
+      expect(page_data['component']).to eq('Orders')
+      expect(page_data['props']).to have_key('orders')
+      expect(page_data['props']).to have_key('filters')
     end
 
     it 'returns orders as JSON with filtering' do
@@ -43,7 +46,7 @@ RSpec.describe 'Orders Controller', type: :request do
     end
 
     it 'creates an order and returns 201 JSON' do
-      post '/orders', params: valid_params.to_json, headers: { 'Content-Type' => 'application/json' }
+      post '/orders', params: valid_params.to_json, headers: { 'Content-Type' => 'application/json', 'Accept' => 'application/json' }
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
       expect(json['success']).to be true
@@ -56,7 +59,7 @@ RSpec.describe 'Orders Controller', type: :request do
     end
 
     it 'returns 422 when lines are empty' do
-      post '/orders', params: { station_ref: 'Station-01', vertical: 'grocery', lines: [] }.to_json, headers: { 'Content-Type' => 'application/json' }
+      post '/orders', params: { station_ref: 'Station-01', vertical: 'grocery', lines: [] }.to_json, headers: { 'Content-Type' => 'application/json', 'Accept' => 'application/json' }
       expect(response).to have_http_status(:unprocessable_entity)
       json = JSON.parse(response.body)
       expect(json['success']).to be false
@@ -64,7 +67,7 @@ RSpec.describe 'Orders Controller', type: :request do
     end
 
     it 'returns 422 when vertical is invalid' do
-      post '/orders', params: { station_ref: 'Station-01', vertical: 'invalid', lines: [{ name: 'Test', qty: 1, unit_price_cents: 10_000 }] }.to_json, headers: { 'Content-Type' => 'application/json' }
+      post '/orders', params: { station_ref: 'Station-01', vertical: 'invalid', lines: [{ name: 'Test', qty: 1, unit_price_cents: 10_000 }] }.to_json, headers: { 'Content-Type' => 'application/json', 'Accept' => 'application/json' }
       expect(response).to have_http_status(:unprocessable_entity)
       json = JSON.parse(response.body)
       expect(json['success']).to be false
@@ -141,18 +144,19 @@ RSpec.describe 'Orders Controller', type: :request do
   describe 'POST /orders/:id/void' do
     let!(:order) { create(:order, status: 'created', total_cents: 50_000) }
 
-    it 'voids order and logs audit event' do
+    it 'voids order using strictly authenticated actor_id and logs audit event' do
       expect do
-        post "/orders/#{order.id}/void", params: { reason: 'Customer changed mind', actor_id: staff.id }, headers: { 'Accept' => 'application/json' }
+        post "/orders/#{order.id}/void", params: { reason: 'Customer changed mind' }, headers: { 'Accept' => 'application/json' }
       end.to change(PosAuditEvent, :count).by(1)
 
       expect(response).to have_http_status(:ok)
       expect(order.reload.status).to eq('voided')
+      expect(PosAuditEvent.last.actor_id).to eq(staff.id)
     end
 
     it 'returns 422 if order is already fulfilled' do
       order.update!(status: 'fulfilled')
-      post "/orders/#{order.id}/void", params: { reason: 'Test', actor_id: staff.id }, headers: { 'Accept' => 'application/json' }
+      post "/orders/#{order.id}/void", params: { reason: 'Test' }, headers: { 'Accept' => 'application/json' }
       expect(response).to have_http_status(:unprocessable_entity)
       json = JSON.parse(response.body)
       expect(json['error']).to include('Cannot void fulfilled order')
@@ -160,7 +164,7 @@ RSpec.describe 'Orders Controller', type: :request do
 
     it 'returns 422 if order has captured tenders' do
       create(:tender, order: order, amount_cents: 50_000, status: 'captured', idempotency_key: 'tx-captured-1')
-      post "/orders/#{order.id}/void", params: { reason: 'Test', actor_id: staff.id }, headers: { 'Accept' => 'application/json' }
+      post "/orders/#{order.id}/void", params: { reason: 'Test' }, headers: { 'Accept' => 'application/json' }
       expect(response).to have_http_status(:unprocessable_entity)
       json = JSON.parse(response.body)
       expect(json['error']).to include('issue refund instead')

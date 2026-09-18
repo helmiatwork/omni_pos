@@ -1,4 +1,5 @@
 <script>
+  import { router } from '@inertiajs/svelte'
   import Navbar from '../components/Navbar.svelte'
   import { formatMoney, formatDate } from '../lib/utils'
 
@@ -43,7 +44,7 @@
       const data = await res.json()
       if (res.ok && data.success) {
         showNotification('Order berhasil diproses ke dapur/bay cuci!', 'success')
-        window.location.reload()
+        router.reload()
       } else {
         showNotification(data.error || 'Gagal memenuhi order', 'error')
       }
@@ -64,7 +65,7 @@
       const data = await res.json()
       if (res.ok && data.success) {
         showNotification('Order selesai diserahkan kepada pelanggan!', 'success')
-        window.location.reload()
+        router.reload()
       } else {
         showNotification(data.error || 'Gagal menyelesaikan order', 'error')
       }
@@ -97,7 +98,7 @@
       if (res.ok && data.success) {
         showNotification('Order berhasil dibatalkan (void). Audit log tercatat.', 'success')
         isVoidModalOpen = false
-        window.location.reload()
+        router.reload()
       } else {
         showNotification(data.error || 'Gagal membatalkan order', 'error')
       }

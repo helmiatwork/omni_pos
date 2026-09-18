@@ -11,6 +11,10 @@ module Tenders
         existing_tender = Tender.find_by(idempotency_key: idempotency_key)
         return Result.new(success: true, tender: existing_tender) if existing_tender
 
+        if amount_cents.to_i <= 0
+          raise Errors::TenderExceedsBalanceError, 'Tender amount must be greater than zero'
+        end
+
         raise Errors::TenderExceedsBalanceError, 'Payment exceeds remaining balance' if amount_cents.to_i > order.remaining_cents
 
         unless %w[created tendering].include?(order.status)

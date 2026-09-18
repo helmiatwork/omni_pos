@@ -1,7 +1,7 @@
 class ShiftsController < ApplicationController
   def index
     current_shift = Shift.open.order(opened_at: :desc).first
-    past_shifts = Shift.closed.order(closed_at: :desc).limit(20)
+    past_shifts = Shift.closed.includes(:cashier).order(closed_at: :desc).limit(20)
     audit_logs = PosAuditEvent.order(created_at: :desc).limit(30)
 
     payload = {
@@ -17,9 +17,9 @@ class ShiftsController < ApplicationController
   end
 
   def open
-    cashier_id = params[:cashier_id].presence || current_actor_id
-    device_id = params[:device_id].presence || SecureRandom.uuid
-    opening_cash = params[:opening_cash]
+    cashier_id = current_actor_id
+    device_id = shift_open_params[:device_id].presence || SecureRandom.uuid
+    opening_cash = shift_open_params[:opening_cash]
 
     shift = Shift.new(
       cashier_id: cashier_id,
@@ -45,11 +45,11 @@ class ShiftsController < ApplicationController
 
   def close
     shift = Shift.find(params[:id])
-    actor_id = params[:actor_id].presence || shift.cashier_id || current_actor_id
+    actor_id = current_actor_id
 
     result = Shifts::CloseService.call(
       shift: shift,
-      counted_cash: params[:counted_cash],
+      counted_cash: shift_close_params[:counted_cash],
       actor_id: actor_id
     )
 
@@ -68,5 +68,15 @@ class ShiftsController < ApplicationController
     else
       redirect_to shifts_path, alert: e.message
     end
+  end
+
+  private
+
+  def shift_open_params
+    params.permit(:device_id, :opening_cash)
+  end
+
+  def shift_close_params
+    params.permit(:counted_cash)
   end
 end

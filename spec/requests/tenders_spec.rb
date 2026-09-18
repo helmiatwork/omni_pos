@@ -96,6 +96,26 @@ RSpec.describe 'Tenders Controller', type: :request do
     end
 
     context 'error states' do
+      it 'rejects zero amount tender with 422' do
+        post "/orders/#{order.id}/tenders",
+             params: { method: 'cash', amount_cents: 0, idempotency_key: idempotency_key },
+             headers: { 'Accept' => 'application/json' }
+
+        expect(response).to have_http_status(:unprocessable_entity)
+        json = JSON.parse(response.body)
+        expect(json['error']).to include('greater than zero')
+      end
+
+      it 'rejects negative amount tender with 422' do
+        post "/orders/#{order.id}/tenders",
+             params: { method: 'cash', amount_cents: -5_000, idempotency_key: idempotency_key },
+             headers: { 'Accept' => 'application/json' }
+
+        expect(response).to have_http_status(:unprocessable_entity)
+        json = JSON.parse(response.body)
+        expect(json['error']).to include('greater than zero')
+      end
+
       it 'rejects overpayment with 422 TenderExceedsBalanceError' do
         post "/orders/#{order.id}/tenders",
              params: { method: 'cash', amount_cents: 150_000, idempotency_key: idempotency_key },

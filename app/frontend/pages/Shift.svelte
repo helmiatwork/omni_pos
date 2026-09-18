@@ -1,4 +1,5 @@
 <script>
+  import { router } from '@inertiajs/svelte'
   import Navbar from '../components/Navbar.svelte'
   import { formatMoney, formatDate } from '../lib/utils'
 
@@ -36,7 +37,7 @@
       const data = await res.json()
       if (res.ok && data.success) {
         showNotification('Shift kasir berhasil dibuka!', 'success')
-        window.location.reload()
+        router.reload()
       } else {
         showNotification(data.errors ? data.errors.join(', ') : (data.error || 'Gagal membuka shift'), 'error')
       }
@@ -67,7 +68,7 @@
         closeResult = data
         showNotification(`Shift berhasil ditutup! Selisih kas: ${formatMoney(data.variance)}`, 'success')
         setTimeout(() => {
-          window.location.reload()
+          router.reload()
         }, 3000)
       } else {
         showNotification(data.error || 'Gagal menutup shift', 'error')
