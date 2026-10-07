@@ -7,7 +7,7 @@ gem "inertia_rails"
 gem "vite_rails"
 gem "bcrypt", "~> 3.1.7"
 gem "money"
-gem "json", "~> 2.9"
+gem "json", "~> 3.0"
 
 gem "solid_cache"
 gem "solid_queue"
